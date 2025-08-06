@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState , useEffect} from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -27,7 +27,7 @@ export default function Auth() {
       navigate("/todos"); 
     }
   }, [location.search, navigate]);
-  
+
   const handleRegister = async (e) => {
     e.preventDefault();
     try {
