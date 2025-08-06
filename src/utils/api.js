@@ -1,6 +1,7 @@
 import axios from "axios";
 
-const API_URL = "http://127.0.0.1:5000";
+const API_URL =
+  import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:5000";
 
 const api = axios.create({
   baseURL: API_URL,
@@ -8,7 +9,6 @@ const api = axios.create({
     "Content-Type": "application/json",
   },
 });
-
 
 // Register User
 export async function registerUserAPI(email, password) {
@@ -26,7 +26,6 @@ export async function loginUserAPI(email, password) {
 export function googleLoginRedirect() {
   window.location.href = `${API_URL}/login/google`;
 }
-
 
 // Fetch Todos
 export async function fetchTodosAPI(token, page = 1, limit = 3) {
