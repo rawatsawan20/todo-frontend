@@ -40,7 +40,7 @@ export default function Todos() {
     }
 
     if (!authToken) {
-      navigate("/todos");
+      navigate("/login");
     } else {
       resetAndLoadTodos(authToken);
     }

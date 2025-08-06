@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import Loader from "../components/Loader";
@@ -11,11 +11,23 @@ import {
 
 export default function Auth() {
   const navigate = useNavigate();
+  const location = useLocation();
+
   const [mode, setMode] = useState("register"); 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const tokenFromURL = params.get("token");
+
+    if (tokenFromURL) {
+      localStorage.setItem("token", tokenFromURL);
+      navigate("/todos"); 
+    }
+  }, [location.search, navigate]);
+  
   const handleRegister = async (e) => {
     e.preventDefault();
     try {
