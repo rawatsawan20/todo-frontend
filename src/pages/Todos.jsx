@@ -20,51 +20,48 @@ export default function Todos() {
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
-
+  const [authToken, setAuthToken] = useState(localStorage.getItem("token") || "");
   const navigate = useNavigate();
   const location = useLocation();
   const token = localStorage.getItem("token");
 
-  const scrollContainerRef = useRef(null);
   const lastTodoRef = useRef(null);
 
   useEffect(() => {
-  const params = new URLSearchParams(location.search);
-  const tokenFromURL = params.get("token");
+    const params = new URLSearchParams(location.search);
+    const tokenFromURL = params.get("token");
 
-  if (tokenFromURL) {
-    localStorage.setItem("token", tokenFromURL);
-    navigate("/todos", { replace: true });
-    setTimeout(() => {
-      resetAndLoadTodos();
-    }, 0);
-    return; 
-  }
+    if (tokenFromURL) {
+      localStorage.setItem("token", tokenFromURL);
+      setAuthToken(tokenFromURL);
+      window.history.replaceState({}, document.title, "/todos");
+      resetAndLoadTodos(tokenFromURL);
+      return;
+    }
 
-  const storedToken = localStorage.getItem("token");
-  if (!storedToken) {
-    navigate("/login");
-  } else {
-    resetAndLoadTodos();
-  }
-}, [location.search, navigate]);
+    if (!authToken) {
+      navigate("/login");
+    } else {
+      resetAndLoadTodos(authToken);
+    }
+  }, [location.search, navigate]);
 
-  const resetAndLoadTodos = () => {
+  const resetAndLoadTodos = (tokenValue) => {
     setTodos([]);
     setPage(1);
     setHasMore(true);
-    loadTodos(1, true);
+    loadTodos(1, true, tokenValue);
   };
 
-  const loadTodos = async (pageToLoad = page, isFirstLoad = false) => {
+  const loadTodos = async (pageToLoad = page, isFirstLoad = false, tokenToUse = authToken) => {
     if (loading || !hasMore) return;
     setLoading(true);
 
     try {
-      const data = await fetchTodosAPI(token, pageToLoad);
+      const data = await fetchTodosAPI(tokenToUse, pageToLoad);
 
       setTodos((prev) => {
-        if (isFirstLoad) return data.todos; 
+        if (isFirstLoad) return data.todos;
         const existingIds = new Set(prev.map((t) => t.id));
         const newTodos = data.todos.filter((t) => !existingIds.has(t.id));
         return [...prev, ...newTodos];
@@ -88,7 +85,7 @@ export default function Todos() {
           loadTodos();
         }
       },
-      { root: scrollContainerRef.current, threshold: 1 }
+      { root: null, threshold: 1 }
     );
 
     observer.observe(lastTodoRef.current);
@@ -114,10 +111,10 @@ export default function Todos() {
       } else {
         const newTodo = await addTodoAPI(token, title, description);
         toast.success("✅ Todo added!");
-        setTodos((prev) => [ 
-          { id: newTodo.id, title: newTodo.title, description: newTodo.description }, 
-          ...prev
-        ]); 
+        setTodos((prev) => [
+          { id: newTodo.id, title: newTodo.title, description: newTodo.description },
+          ...prev,
+        ]);
       }
       setTitle("");
       setDescription("");
@@ -129,7 +126,7 @@ export default function Todos() {
     }
   };
 
-    const handleDelete = (id) => {
+  const handleDelete = (id) => {
     Swal.fire({
       title: "Are you sure?",
       text: "This will permanently delete the todo!",
@@ -181,84 +178,76 @@ export default function Todos() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 p-8">
+    <div className="min-h-screen bg-gradient-to-br from-[#6EE7B7] via-[#3B82F6] to-[#9333EA] flex items-center justify-center p-6">
       {loading && <Loader />}
+      <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-3xl animate-fadeIn">
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-3xl font-extrabold text-gray-800">✨ My Todos</h1>
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-2 bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 text-white px-4 py-2 rounded-lg shadow-md hover:shadow-lg transition-all"
+          >
+            <FaSignOutAlt /> Logout
+          </button>
+        </div>
 
-      <div className="flex justify-end mb-4">
-        <button
-          onClick={handleLogout}
-          className="flex items-center gap-2 bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition"
+        <form
+          onSubmit={handleSubmit}
+          className="flex flex-col sm:flex-row gap-4 mb-6"
         >
-          <FaSignOutAlt /> Logout
-        </button>
-      </div>
-
-      <div className="max-w-3xl mx-auto bg-white shadow-lg rounded-lg p-6">
-        <h1 className="text-2xl font-bold mb-4">Your Todos</h1>
-
-        <form onSubmit={handleSubmit} className="mb-6 space-y-3">
           <input
             type="text"
             placeholder="Title"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            className="w-full p-3 border rounded-lg"
-            required
+            className="flex-1 p-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-400"
           />
-          <textarea
+          <input
+            type="text"
             placeholder="Description"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            className="w-full p-3 border rounded-lg"
+            className="flex-1 p-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-400"
           />
           <button
             type="submit"
-            className={`w-full ${
-              editId ? "bg-green-600" : "bg-blue-600"
-            } text-white py-2 px-4 rounded-lg hover:opacity-90 transition`}
+            className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white px-6 py-3 rounded-lg shadow-md hover:shadow-lg transition-all"
           >
-            {editId ? "Update Todo" : "Add Todo"}
+            {editId ? "Update" : "Add"}
           </button>
         </form>
 
-          <div
-          className="space-y-3 max-h-[400px] overflow-y-auto pr-2"
-          ref={scrollContainerRef}
-        >
-          {todos.length === 0 ? (
-            <p className="text-gray-500">No todos found</p>
-          ) : (
-            todos.map((todo, index) => (
-              <li
-                key={todo.id}
-                ref={index === todos.length - 1 ? lastTodoRef : null}
-                className="p-4 bg-gray-50 border rounded-lg flex justify-between items-center"
-              >
-                <div>
-                  <h2 className="font-semibold">{todo.title}</h2>
-                  <p className="text-gray-600">{todo.description}</p>
-                </div>
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => {
-                      setEditId(todo.id);
-                      setTitle(todo.title);
-                      setDescription(todo.description);
-                    }}
-                    className="flex items-center gap-1 bg-yellow-400 text-white px-3 py-1 rounded-lg hover:bg-yellow-500 transition"
-                  >
-                    <FaEdit /> Edit
-                  </button>
-                  <button
-                    onClick={() => handleDelete(todo.id)}
-                    className="flex items-center gap-1 bg-red-500 text-white px-3 py-1 rounded-lg hover:bg-red-600 transition"
-                  >
-                    <FaTrashAlt /> Delete
-                  </button>
-                </div>
-              </li>
-            ))
-          )}
+        <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2">
+          {todos.map((todo, index) => (
+            <div
+              key={todo.id}
+              ref={index === todos.length - 1 ? lastTodoRef : null}
+              className="bg-gradient-to-r from-[#dfe9f3] via-[#ffffff] to-[#dfe9f3] rounded-lg p-4 shadow hover:shadow-lg hover:scale-[1.02] transition-all flex justify-between items-center"
+            >
+              <div>
+                <h2 className="font-bold text-lg text-gray-800">{todo.title}</h2>
+                <p className="text-gray-600">{todo.description}</p>
+              </div>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    setEditId(todo.id);
+                    setTitle(todo.title);
+                    setDescription(todo.description);
+                  }}
+                  className="text-blue-500 hover:text-blue-700"
+                >
+                  <FaEdit />
+                </button>
+                <button
+                  onClick={() => handleDelete(todo.id)}
+                  className="text-red-500 hover:text-red-700"
+                >
+                  <FaTrashAlt />
+                </button>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     </div>
